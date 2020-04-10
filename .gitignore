@@ -1,0 +1,10 @@
+__pycache__/
+.mypy_cache/
+.venv/
+dist/
+*.egg-info/
+pyinstaller/
+.vscode/
+download/
+.coverage
+coverage.xml

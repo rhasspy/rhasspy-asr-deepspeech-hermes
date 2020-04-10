@@ -1,0 +1,1 @@
+rhasspy-asr-pocketsphinx==0.1.5
