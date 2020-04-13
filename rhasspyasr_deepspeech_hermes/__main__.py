@@ -53,6 +53,11 @@ def get_args() -> argparse.Namespace:
     parser.add_argument(
         "--lm-beta", type=float, default=1.85, help="Word insertion bonus (lm_beta)"
     )
+    parser.add_argument(
+        "--no-overwrite-train",
+        action="store_true",
+        help="Don't overwrite language model/trie during training",
+    )
 
     # Silence detection
     parser.add_argument(
@@ -113,38 +118,43 @@ def run_mqtt(args: argparse.Namespace):
         args.trie = Path(args.trie)
 
     # Load model
-    _LOGGER.debug("Loading model from %s (beam width=%s)", args.model, args.beam_width)
-    ds_model = Model(str(args.model), args.beam_width)
-
-    if (
-        args.language_model
-        and args.language_model.is_file()
-        and args.trie
-        and args.trie.is_file()
-    ):
+    ds_model: typing.Optional[Model] = None
+    if args.model.is_file():
         _LOGGER.debug(
-            "Enabling language model (lm=%s, trie=%s, lm_alpha=%s, lm_beta=%s)",
-            args.language_model,
-            args.trie,
-            args.lm_alpha,
-            args.lm_beta,
+            "Loading model from %s (beam width=%s)", args.model, args.beam_width
         )
+        ds_model = Model(str(args.model), args.beam_width)
 
-        ds_model.enableDecoderWithLM(
-            str(args.language_model), str(args.trie), args.lm_alpha, args.lm_beta
-        )
+        if (
+            args.language_model
+            and args.language_model.is_file()
+            and args.trie
+            and args.trie.is_file()
+        ):
+            _LOGGER.debug(
+                "Enabling language model (lm=%s, trie=%s, lm_alpha=%s, lm_beta=%s)",
+                args.language_model,
+                args.trie,
+                args.lm_alpha,
+                args.lm_beta,
+            )
+
+            ds_model.enableDecoderWithLM(
+                str(args.language_model), str(args.trie), args.lm_alpha, args.lm_beta
+            )
 
     # Listen for messages
     client = mqtt.Client()
     hermes = AsrHermesMqtt(
         client,
-        ds_model,
         model_path=args.model,
+        model=ds_model,
         language_model_path=args.language_model,
         trie_path=args.trie,
         beam_width=args.beam_width,
         lm_alpha=args.lm_alpha,
         lm_beta=args.lm_beta,
+        no_overwrite_train=args.no_overwrite_train,
         skip_seconds=args.voice_skip_seconds,
         min_seconds=args.voice_min_seconds,
         speech_seconds=args.voice_speech_seconds,

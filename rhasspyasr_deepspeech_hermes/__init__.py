@@ -57,8 +57,8 @@ class AsrHermesMqtt(HermesClient):
     def __init__(
         self,
         client,
-        model: Model,
         model_path: Path,
+        model: typing.Optional[Model] = None,
         language_model_path: typing.Optional[Path] = None,
         trie_path: typing.Optional[Path] = None,
         beam_width: int = 500,
@@ -303,6 +303,11 @@ class AsrHermesMqtt(HermesClient):
     ) -> AsrTextCaptured:
         """Transcribe audio data and publish captured text."""
         try:
+            if not self.model():
+                self.load_model()
+
+            assert self.model, "Model not loaded"
+
             _LOGGER.debug("Transcribing %s byte(s) of audio data", len(wav_bytes))
 
             # Convert to raw numpy buffer
@@ -363,34 +368,8 @@ class AsrHermesMqtt(HermesClient):
             else:
                 _LOGGER.warning("Not overwriting language model/trie")
 
-            # Load model
-            _LOGGER.debug(
-                "Re-loading model (model=%s, beam width=%s)",
-                self.model_path,
-                self.beam_width,
-            )
-            self.model = Model(str(self.model_path), self.beam_width)
-
-            if (
-                self.language_model_path
-                and self.language_model_path.is_file()
-                and self.trie_path
-                and self.trie_path.is_file()
-            ):
-                _LOGGER.debug(
-                    "Enabling language model (lm=%s, trie=%s, lm_alpha=%s, lm_beta=%s)",
-                    self.language_model_path,
-                    self.trie_path,
-                    self.lm_alpha,
-                    self.lm_beta,
-                )
-
-                self.model.enableDecoderWithLM(
-                    str(self.language_model_path),
-                    str(self.trie_path),
-                    self.lm_alpha,
-                    self.lm_beta,
-                )
+            # Reload model
+            self.load_model()
 
             yield (AsrTrainSuccess(id=train.id), {"site_id": site_id})
         except Exception as e:
@@ -400,6 +379,35 @@ class AsrHermesMqtt(HermesClient):
                 context="handle_train",
                 site_id=site_id,
                 session_id=train.id,
+            )
+
+    def load_model(self):
+        """Load DeepSpeech model with lm/trie."""
+        # Load model
+        _LOGGER.debug(
+            "Loading model (model=%s, beam width=%s)", self.model_path, self.beam_width
+        )
+        self.model = Model(str(self.model_path), self.beam_width)
+
+        if (
+            self.language_model_path
+            and self.language_model_path.is_file()
+            and self.trie_path
+            and self.trie_path.is_file()
+        ):
+            _LOGGER.debug(
+                "Enabling language model (lm=%s, trie=%s, lm_alpha=%s, lm_beta=%s)",
+                self.language_model_path,
+                self.trie_path,
+                self.lm_alpha,
+                self.lm_beta,
+            )
+
+            self.model.enableDecoderWithLM(
+                str(self.language_model_path),
+                str(self.trie_path),
+                self.lm_alpha,
+                self.lm_beta,
             )
 
     # -------------------------------------------------------------------------
