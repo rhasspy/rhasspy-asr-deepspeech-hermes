@@ -303,7 +303,7 @@ class AsrHermesMqtt(HermesClient):
     ) -> AsrTextCaptured:
         """Transcribe audio data and publish captured text."""
         try:
-            if not self.model():
+            if not self.model:
                 self.load_model()
 
             assert self.model, "Model not loaded"
