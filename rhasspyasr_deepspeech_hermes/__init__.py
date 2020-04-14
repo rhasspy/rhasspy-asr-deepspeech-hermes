@@ -20,6 +20,8 @@ from rhasspyhermes.asr import (
     AsrToggleOff,
     AsrToggleOn,
     AsrToggleReason,
+    AsrToken,
+    AsrTokenTime,
     AsrTrain,
     AsrTrainSuccess,
 )
@@ -322,13 +324,48 @@ class AsrHermesMqtt(HermesClient):
 
             if metadata:
                 # Actual transcription
-                text = "".join(item.character for item in metadata.items)
+                text = ""
+
+                # Individual tokens
+                asr_inner_tokens: typing.List[AsrToken] = []
+                word = ""
+                word_start_time = 0
+                word_start_index = 0
+                for index, item in enumerate(metadata.items):
+                    text += item.character
+
+                    if item.character != " ":
+                        # Add to current word
+                        word += item.character
+
+                    if item.character == " " or (index == (len(metadata.items) - 1)):
+                        # Combine into single tokens
+                        asr_inner_tokens.append(
+                            AsrToken(
+                                value=word,
+                                confidence=1,
+                                range_start=word_start_index,
+                                range_end=index,
+                                time=AsrTokenTime(
+                                    start=word_start_time, end=item.start_time
+                                ),
+                            )
+                        )
+
+                        # Word break
+                        word = ""
+                        word_start_time = 0
+                        word_start_index = index + 1
+                    elif len(word) > 1:
+                        word_start_time = item.start_time
+
                 return AsrTextCaptured(
                     text=text,
                     likelihood=metadata.confidence,
                     seconds=(end_time - start_time),
                     site_id=site_id,
                     session_id=session_id,
+                    asr_tokens=[asr_inner_tokens],
                 )
 
             _LOGGER.warning("Received empty transcription")
