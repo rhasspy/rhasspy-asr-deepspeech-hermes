@@ -20,14 +20,13 @@ from rhasspyhermes.asr import (
     AsrToggleOff,
     AsrToggleOn,
     AsrToggleReason,
-    AsrToken,
-    AsrTokenTime,
     AsrTrain,
     AsrTrainSuccess,
 )
 from rhasspyhermes.audioserver import AudioFrame, AudioSessionFrame
 from rhasspyhermes.base import Message
 from rhasspyhermes.client import GeneratorType, HermesClient, TopicArgs
+from rhasspyhermes.nlu import AsrToken, AsrTokenTime
 from rhasspysilence import VoiceCommandRecorder, VoiceCommandResult, WebRtcVadRecorder
 
 from .train import train as deepspeech_train
