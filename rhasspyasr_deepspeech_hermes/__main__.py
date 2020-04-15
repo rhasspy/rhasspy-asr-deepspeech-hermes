@@ -37,6 +37,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument(
         "--model", required=True, help="Path to the model (protocol buffer binary file)"
     )
+    parser.add_argument("--alphabet", help="Path to alphabet.txt file")
     parser.add_argument(
         "--language-model", help="Path to read/write ARPA language model file"
     )
@@ -117,6 +118,9 @@ def run_mqtt(args: argparse.Namespace):
     if args.trie:
         args.trie = Path(args.trie)
 
+    if args.alphabet:
+        args.alphabet = Path(args.alphabet)
+
     # Load model
     ds_model: typing.Optional[Model] = None
     if args.model.is_file():
@@ -149,6 +153,7 @@ def run_mqtt(args: argparse.Namespace):
         client,
         model_path=args.model,
         model=ds_model,
+        alphabet_path=args.alphabet,
         language_model_path=args.language_model,
         trie_path=args.trie,
         beam_width=args.beam_width,

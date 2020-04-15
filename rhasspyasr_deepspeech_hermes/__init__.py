@@ -61,6 +61,7 @@ class AsrHermesMqtt(HermesClient):
         client,
         model_path: Path,
         model: typing.Optional[Model] = None,
+        alphabet_path: typing.Optional[Path] = None,
         language_model_path: typing.Optional[Path] = None,
         trie_path: typing.Optional[Path] = None,
         beam_width: int = 500,
@@ -101,6 +102,7 @@ class AsrHermesMqtt(HermesClient):
 
         self.model = model
         self.model_path = model_path
+        self.alphabet_path = alphabet_path
 
         # If True, language model/trie won't be overwritten during training
         self.no_overwrite_train = no_overwrite_train
@@ -389,6 +391,7 @@ class AsrHermesMqtt(HermesClient):
                 not self.no_overwrite_train
                 and self.language_model_path
                 and self.trie_path
+                and self.alphabet_path
             ):
                 _LOGGER.debug("Loading %s", train.graph_path)
                 with gzip.GzipFile(train.graph_path, mode="rb") as graph_gzip:
@@ -397,10 +400,7 @@ class AsrHermesMqtt(HermesClient):
                 # Generate language model/trie
                 _LOGGER.debug("Starting training")
                 deepspeech_train(
-                    graph,
-                    self.language_model_path,
-                    self.trie_path,
-                    _DIR / "alphabet.txt",
+                    graph, self.language_model_path, self.trie_path, self.alphabet_path
                 )
             else:
                 _LOGGER.warning("Not overwriting language model/trie")
