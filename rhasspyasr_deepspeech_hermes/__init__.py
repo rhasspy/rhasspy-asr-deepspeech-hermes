@@ -1,16 +1,13 @@
 """Hermes MQTT server for Rhasspy ASR using Mozilla's DeepSpeech"""
 import gzip
-import io
 import logging
-import time
 import typing
-import wave
 from dataclasses import dataclass
 from pathlib import Path
 
 import networkx as nx
-import numpy as np
-from deepspeech import Model
+import rhasspyasr_deepspeech
+from rhasspyasr import Transcriber
 from rhasspyhermes.asr import (
     AsrAudioCaptured,
     AsrError,
@@ -28,8 +25,6 @@ from rhasspyhermes.base import Message
 from rhasspyhermes.client import GeneratorType, HermesClient, TopicArgs
 from rhasspyhermes.nlu import AsrToken, AsrTokenTime
 from rhasspysilence import VoiceCommandRecorder, VoiceCommandResult, WebRtcVadRecorder
-
-from .train import train as deepspeech_train
 
 _DIR = Path(__file__).parent
 _LOGGER = logging.getLogger("rhasspyasr_deepspeech_hermes")
@@ -58,14 +53,10 @@ class AsrHermesMqtt(HermesClient):
     def __init__(
         self,
         client,
-        model_path: Path,
-        model: typing.Optional[Model] = None,
-        alphabet_path: typing.Optional[Path] = None,
+        transcriber_factory: typing.Callable[[], Transcriber],
         language_model_path: typing.Optional[Path] = None,
+        alphabet_path: typing.Optional[Path] = None,
         trie_path: typing.Optional[Path] = None,
-        beam_width: int = 500,
-        lm_alpha: float = 0.75,
-        lm_beta: float = 1.85,
         no_overwrite_train: bool = False,
         site_ids: typing.Optional[typing.List[str]] = None,
         enabled: bool = True,
@@ -99,9 +90,8 @@ class AsrHermesMqtt(HermesClient):
             AsrTrain,
         )
 
-        self.model = model
-        self.model_path = model_path
-        self.alphabet_path = alphabet_path
+        self.make_transcriber = transcriber_factory
+        self.transcriber: typing.Optional[Transcriber] = None
 
         # If True, language model/trie won't be overwritten during training
         self.no_overwrite_train = no_overwrite_train
@@ -109,9 +99,7 @@ class AsrHermesMqtt(HermesClient):
         # Files to write during training
         self.language_model_path = language_model_path
         self.trie_path = trie_path
-        self.beam_width = beam_width
-        self.lm_alpha = lm_alpha
-        self.lm_beta = lm_beta
+        self.alphabet_path = alphabet_path
 
         # True if ASR system is enabled
         self.enabled = enabled
@@ -306,67 +294,46 @@ class AsrHermesMqtt(HermesClient):
     ) -> AsrTextCaptured:
         """Transcribe audio data and publish captured text."""
         try:
-            if not self.model:
-                self.load_model()
+            if not self.transcriber:
+                self.transcriber = self.make_transcriber()
 
-            assert self.model, "Model not loaded"
+            assert self.transcriber, "Transcriber not loaded"
 
             _LOGGER.debug("Transcribing %s byte(s) of audio data", len(wav_bytes))
+            transcription = self.transcriber.transcribe_wav(wav_bytes)
+            if transcription:
+                _LOGGER.debug(transcription)
+                asr_tokens: typing.Optional[typing.List[typing.List[AsrToken]]] = None
 
-            # Convert to raw numpy buffer
-            with io.BytesIO(wav_bytes) as wav_io:
-                with wave.open(wav_io) as wav_file:
-                    audio_bytes = wav_file.readframes(wav_file.getnframes())
-                    audio_buffer = np.frombuffer(audio_bytes, np.int16)
-
-            start_time = time.perf_counter()
-            metadata = self.model.sttWithMetadata(audio_buffer)
-            end_time = time.perf_counter()
-
-            if metadata:
-                # Actual transcription
-                text = ""
-
-                # Individual tokens
-                asr_inner_tokens: typing.List[AsrToken] = []
-                word = ""
-                word_start_time = 0
-                word_start_index = 0
-                for index, item in enumerate(metadata.items):
-                    text += item.character
-
-                    if item.character != " ":
-                        # Add to current word
-                        word += item.character
-
-                    if item.character == " " or (index == (len(metadata.items) - 1)):
-                        # Combine into single tokens
+                if transcription.tokens:
+                    # Only one level of ASR tokens
+                    asr_inner_tokens: typing.List[AsrToken] = []
+                    asr_tokens = [asr_inner_tokens]
+                    range_start = 0
+                    for ps_token in transcription.tokens:
+                        range_end = range_start + len(ps_token.token) + 1
                         asr_inner_tokens.append(
                             AsrToken(
-                                value=word,
-                                confidence=1,
-                                range_start=word_start_index,
-                                range_end=index,
+                                value=ps_token.token,
+                                confidence=ps_token.likelihood,
+                                range_start=range_start,
+                                range_end=range_start + len(ps_token.token) + 1,
                                 time=AsrTokenTime(
-                                    start=word_start_time, end=item.start_time
+                                    start=ps_token.start_time, end=ps_token.end_time
                                 ),
                             )
                         )
 
-                        # Word break
-                        word = ""
-                        word_start_time = 0
-                        word_start_index = index + 1
-                    elif len(word) > 1:
-                        word_start_time = item.start_time
+                        range_start = range_end
 
+                # Actual transcription
                 return AsrTextCaptured(
-                    text=text,
-                    likelihood=metadata.confidence,
-                    seconds=(end_time - start_time),
+                    text=transcription.text,
+                    likelihood=transcription.likelihood,
+                    seconds=transcription.transcribe_seconds,
                     site_id=site_id,
                     session_id=session_id,
-                    asr_tokens=[asr_inner_tokens],
+                    asr_tokens=asr_tokens,
                 )
 
             _LOGGER.warning("Received empty transcription")
@@ -398,14 +365,14 @@ class AsrHermesMqtt(HermesClient):
 
                 # Generate language model/trie
                 _LOGGER.debug("Starting training")
-                deepspeech_train(
+                rhasspyasr_deepspeech.train(
                     graph, self.language_model_path, self.trie_path, self.alphabet_path
                 )
             else:
                 _LOGGER.warning("Not overwriting language model/trie")
 
-            # Reload model
-            self.load_model()
+            # Model will reload
+            self.transcriber = None
 
             yield (AsrTrainSuccess(id=train.id), {"site_id": site_id})
         except Exception as e:
@@ -415,35 +382,6 @@ class AsrHermesMqtt(HermesClient):
                 context="handle_train",
                 site_id=site_id,
                 session_id=train.id,
-            )
-
-    def load_model(self):
-        """Load DeepSpeech model with lm/trie."""
-        # Load model
-        _LOGGER.debug(
-            "Loading model (model=%s, beam width=%s)", self.model_path, self.beam_width
-        )
-        self.model = Model(str(self.model_path), self.beam_width)
-
-        if (
-            self.language_model_path
-            and self.language_model_path.is_file()
-            and self.trie_path
-            and self.trie_path.is_file()
-        ):
-            _LOGGER.debug(
-                "Enabling language model (lm=%s, trie=%s, lm_alpha=%s, lm_beta=%s)",
-                self.language_model_path,
-                self.trie_path,
-                self.lm_alpha,
-                self.lm_beta,
-            )
-
-            self.model.enableDecoderWithLM(
-                str(self.language_model_path),
-                str(self.trie_path),
-                self.lm_alpha,
-                self.lm_beta,
             )
 
     # -------------------------------------------------------------------------

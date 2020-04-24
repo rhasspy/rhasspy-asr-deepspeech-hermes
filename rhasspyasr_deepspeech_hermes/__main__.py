@@ -7,7 +7,7 @@ from pathlib import Path
 
 import paho.mqtt.client as mqtt
 import rhasspyhermes.cli as hermes_cli
-from deepspeech import Model
+from rhasspyasr_deepspeech import DeepSpeechTranscriber
 
 from . import AsrHermesMqtt
 
@@ -121,44 +121,24 @@ def run_mqtt(args: argparse.Namespace):
     if args.alphabet:
         args.alphabet = Path(args.alphabet)
 
-    # Load model
-    ds_model: typing.Optional[Model] = None
-    if args.model.is_file():
-        _LOGGER.debug(
-            "Loading model from %s (beam width=%s)", args.model, args.beam_width
+    def make_transcriber():
+        return DeepSpeechTranscriber(
+            args.model,
+            args.language_model,
+            args.trie,
+            beam_width=args.beam_width,
+            lm_alpha=args.lm_alpha,
+            lm_beta=args.lm_beta,
         )
-        ds_model = Model(str(args.model), args.beam_width)
-
-        if (
-            args.language_model
-            and args.language_model.is_file()
-            and args.trie
-            and args.trie.is_file()
-        ):
-            _LOGGER.debug(
-                "Enabling language model (lm=%s, trie=%s, lm_alpha=%s, lm_beta=%s)",
-                args.language_model,
-                args.trie,
-                args.lm_alpha,
-                args.lm_beta,
-            )
-
-            ds_model.enableDecoderWithLM(
-                str(args.language_model), str(args.trie), args.lm_alpha, args.lm_beta
-            )
 
     # Listen for messages
     client = mqtt.Client()
     hermes = AsrHermesMqtt(
         client,
-        model_path=args.model,
-        model=ds_model,
-        alphabet_path=args.alphabet,
+        transcriber_factory=make_transcriber,
         language_model_path=args.language_model,
         trie_path=args.trie,
-        beam_width=args.beam_width,
-        lm_alpha=args.lm_alpha,
-        lm_beta=args.lm_beta,
+        alphabet_path=args.alphabet,
         no_overwrite_train=args.no_overwrite_train,
         skip_seconds=args.voice_skip_seconds,
         min_seconds=args.voice_min_seconds,
