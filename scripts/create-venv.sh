@@ -21,10 +21,12 @@ target_arch="$("${src_dir}/architecture.sh")"
 
 # -----------------------------------------------------------------------------
 
+: "${PYTHON=python3}"
+
 # Create virtual environment
 echo "Creating virtual environment at ${venv}"
 rm -rf "${venv}"
-python3 -m venv "${venv}"
+"${PYTHON}" -m venv "${venv}"
 source "${venv}/bin/activate"
 
 # Install Python dependencies
@@ -43,7 +45,7 @@ if [[ -n "$(command -v build_binary)" ]]; then
     kenlm_file="${download}/kenlm-20200308_${target_arch}.tar.gz"
     if [[ ! -s "${kenlm_file}" ]]; then
         echo "Downloading KenLM (${kenlm_file})"
-        curl -sSfL -o "${kenlm_file}" "https://github.com/synesthesiam/docker-kenlm/releases/download/v2020.03.28/kenlm-20200308_${target_arch}.tar.gz"
+        curl -sSfL -o "${kenlm_file}" "https://github.com/synesthesiam/prebuilt-apps/releases/download/v1.0/kenlm-20200308_${target_arch}.tar.gz"
     fi
 
     tar -C "${venv}/bin" -xf "${kenlm_file}" build_binary

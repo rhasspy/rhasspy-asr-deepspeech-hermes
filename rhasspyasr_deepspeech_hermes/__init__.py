@@ -58,6 +58,9 @@ class AsrHermesMqtt(HermesClient):
         alphabet_path: typing.Optional[Path] = None,
         trie_path: typing.Optional[Path] = None,
         no_overwrite_train: bool = False,
+        base_language_model_fst: typing.Optional[Path] = None,
+        base_language_model_weight: float = 0,
+        mixed_language_model_fst: typing.Optional[Path] = None,
         site_ids: typing.Optional[typing.List[str]] = None,
         enabled: bool = True,
         sample_rate: int = 16000,
@@ -92,6 +95,11 @@ class AsrHermesMqtt(HermesClient):
 
         self.make_transcriber = transcriber_factory
         self.transcriber: typing.Optional[Transcriber] = None
+
+        # Mixed language model
+        self.base_language_model_fst = base_language_model_fst
+        self.base_language_model_weight = base_language_model_weight
+        self.mixed_language_model_fst = mixed_language_model_fst
 
         # If True, language model/trie won't be overwritten during training
         self.no_overwrite_train = no_overwrite_train
@@ -366,7 +374,13 @@ class AsrHermesMqtt(HermesClient):
                 # Generate language model/trie
                 _LOGGER.debug("Starting training")
                 rhasspyasr_deepspeech.train(
-                    graph, self.language_model_path, self.trie_path, self.alphabet_path
+                    graph,
+                    self.language_model_path,
+                    self.trie_path,
+                    self.alphabet_path,
+                    base_language_model_fst=self.base_language_model_fst,
+                    base_language_model_weight=self.base_language_model_weight,
+                    mixed_language_model_fst=self.mixed_language_model_fst,
                 )
             else:
                 _LOGGER.warning("Not overwriting language model/trie")

@@ -60,6 +60,22 @@ def get_args() -> argparse.Namespace:
         help="Don't overwrite language model/trie during training",
     )
 
+    # Mixed language modeling
+    parser.add_argument(
+        "--base-language-model-fst",
+        help="Path to base language model FST (training, mixed)",
+    )
+    parser.add_argument(
+        "--base-language-model-weight",
+        type=float,
+        default=0,
+        help="Weight to give base langauge model (training, mixed)",
+    )
+    parser.add_argument(
+        "--mixed-language-model-fst",
+        help="Path to write mixed langauge model FST (training, mixed)",
+    )
+
     # Silence detection
     parser.add_argument(
         "--voice-skip-seconds",
@@ -121,6 +137,12 @@ def run_mqtt(args: argparse.Namespace):
     if args.alphabet:
         args.alphabet = Path(args.alphabet)
 
+    if args.base_language_model_fst:
+        args.base_language_model_fst = Path(args.base_language_model_fst)
+
+    if args.mixed_language_model_fst:
+        args.mixed_language_model_fst = Path(args.mixed_language_model_fst)
+
     def make_transcriber():
         return DeepSpeechTranscriber(
             args.model,
@@ -139,6 +161,9 @@ def run_mqtt(args: argparse.Namespace):
         language_model_path=args.language_model,
         trie_path=args.trie,
         alphabet_path=args.alphabet,
+        base_language_model_fst=args.base_language_model_fst,
+        base_language_model_weight=args.base_language_model_weight,
+        mixed_language_model_fst=args.mixed_language_model_fst,
         no_overwrite_train=args.no_overwrite_train,
         skip_seconds=args.voice_skip_seconds,
         min_seconds=args.voice_min_seconds,
