@@ -31,7 +31,7 @@ def main():
 
 def get_args() -> argparse.Namespace:
     """Parse command-line arguments."""
-    parser = argparse.ArgumentParser(prog="rhasspy-asr-kaldi-hermes")
+    parser = argparse.ArgumentParser(prog="rhasspy-asr-deepspeech-hermes")
 
     # Model settings
     parser.add_argument(
