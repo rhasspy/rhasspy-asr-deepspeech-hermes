@@ -4,6 +4,7 @@ MQTT service for Rhasspy that uses Mozilla's DeepSpeech 0.6.
 
 ## Requirements
 
+* Python 3.7
 * [Mozilla DeepSpeech 0.6.1](https://github.com/mozilla/DeepSpeech/releases/tag/v0.6.1)
 * [Pre-trained model](https://github.com/mozilla/DeepSpeech/blob/master/doc/USING.rst#getting-the-pre-trained-model)
 * `generate_trie` in `PATH` from [native client](https://github.com/mozilla/DeepSpeech/releases/download/v0.6.1/native_client.amd64.cpu.linux.tar.xz)
@@ -14,9 +15,11 @@ MQTT service for Rhasspy that uses Mozilla's DeepSpeech 0.6.
 Clone the repository and create a virtual environment:
 
 ```bash
-git clone https://github.com/rhasspy/rhasspy-asr-deepspeech-hermes.git
-cd rhasspy-asr-deepspeech-hermes
-make
+$ git clone https://github.com/rhasspy/rhasspy-asr-deepspeech-hermes.git
+$ cd rhasspy-asr-deepspeech-hermes
+$ ./configure
+$ make
+$ make install
 ```
 
 ## Running
