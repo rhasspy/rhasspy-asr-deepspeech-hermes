@@ -1,0 +1,39 @@
+---
+name: Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-18.04, macos-latest]
+        python-version: [3.7, 3.8]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v1
+      - name: Install Python dependencies
+        run: |
+          ./configure --enable-in-place
+          make
+          make install
+      - name: Check code
+        run: make check
+      - name: Test code
+        run: make test
+      - name: Make package
+        run: make dist
+  tagging:
+    needs: [test]
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: Bump version and push tag
+        uses: rhasspy/rhasspy-tag-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: bump_tag
