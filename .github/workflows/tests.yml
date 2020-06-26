@@ -15,15 +15,17 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v1
+      - name: Install dependencies on Ubuntu
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt install python3-venv
       - name: Install dependencies on macOS
         if: startsWith(matrix.os, 'macos')
         run: |
           brew install coreutils
       - name: Install Python dependencies
-        run: |
-          ./configure --enable-in-place
-          make
-          make install
+        run: make install
       - name: Check code
         run: make check
       - name: Test code
