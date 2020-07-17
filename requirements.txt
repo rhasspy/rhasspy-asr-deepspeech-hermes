@@ -1,4 +1,4 @@
 paho-mqtt==1.5.0
-rhasspy-asr-deepspeech~=0.2.0
+rhasspy-asr-deepspeech~=0.3.0
 rhasspy-hermes~=0.3.0
-rhasspy-silence~=0.2.0
+rhasspy-silence~=0.3.0
