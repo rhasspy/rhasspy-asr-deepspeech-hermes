@@ -8,9 +8,12 @@ from pathlib import Path
 import networkx as nx
 import rhasspyasr_deepspeech
 from rhasspyasr import Transcriber
+from rhasspysilence import VoiceCommandRecorder, VoiceCommandResult, WebRtcVadRecorder
+
 from rhasspyhermes.asr import (
     AsrAudioCaptured,
     AsrError,
+    AsrRecordingFinished,
     AsrStartListening,
     AsrStopListening,
     AsrTextCaptured,
@@ -24,7 +27,6 @@ from rhasspyhermes.audioserver import AudioFrame, AudioSessionFrame
 from rhasspyhermes.base import Message
 from rhasspyhermes.client import GeneratorType, HermesClient, TopicArgs
 from rhasspyhermes.nlu import AsrToken, AsrTokenTime
-from rhasspysilence import VoiceCommandRecorder, VoiceCommandResult, WebRtcVadRecorder
 
 _DIR = Path(__file__).parent
 _LOGGER = logging.getLogger("rhasspyasr_deepspeech_hermes")
@@ -164,6 +166,8 @@ class AsrHermesMqtt(HermesClient):
         self, message: AsrStopListening
     ) -> typing.AsyncIterable[
         typing.Union[
+            AsrRecordingFinished,
+            AsrStopListening,
             AsrTextCaptured,
             AsrError,
             typing.Tuple[AsrAudioCaptured, typing.Dict[str, typing.Any]],
@@ -189,6 +193,11 @@ class AsrHermesMqtt(HermesClient):
                 )
 
                 if not session.transcription_sent:
+                    # Send recording finished message
+                    yield AsrRecordingFinished(
+                        site_id=message.site_id, session_id=message.session_id
+                    )
+
                     # Send transcription
                     session.transcription_sent = True
 
@@ -228,6 +237,7 @@ class AsrHermesMqtt(HermesClient):
         session_id: typing.Optional[str] = None,
     ) -> typing.AsyncIterable[
         typing.Union[
+            AsrRecordingFinished,
             AsrTextCaptured,
             AsrError,
             typing.Tuple[AsrAudioCaptured, typing.Dict[str, typing.Any]],
@@ -264,6 +274,11 @@ class AsrHermesMqtt(HermesClient):
                             "Voice command recorded for session %s (%s byte(s))",
                             target_id,
                             len(command.audio_data),
+                        )
+
+                        # Send recording finished message
+                        yield AsrRecordingFinished(
+                            site_id=site_id, session_id=target_id
                         )
 
                         session.transcription_sent = True
