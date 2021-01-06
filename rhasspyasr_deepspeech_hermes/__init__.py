@@ -8,7 +8,6 @@ from pathlib import Path
 import networkx as nx
 import rhasspyasr_deepspeech
 from rhasspyasr import Transcriber
-from rhasspysilence import VoiceCommandRecorder, VoiceCommandResult, WebRtcVadRecorder
 
 from rhasspyhermes.asr import (
     AsrAudioCaptured,
@@ -27,6 +26,12 @@ from rhasspyhermes.audioserver import AudioFrame, AudioSessionFrame
 from rhasspyhermes.base import Message
 from rhasspyhermes.client import GeneratorType, HermesClient, TopicArgs
 from rhasspyhermes.nlu import AsrToken, AsrTokenTime
+from rhasspysilence import (
+    SilenceMethod,
+    VoiceCommandRecorder,
+    VoiceCommandResult,
+    WebRtcVadRecorder,
+)
 
 _DIR = Path(__file__).parent
 _LOGGER = logging.getLogger("rhasspyasr_deepspeech_hermes")
@@ -75,6 +80,10 @@ class AsrHermesMqtt(HermesClient):
         silence_seconds: float = 0.5,
         before_seconds: float = 0.5,
         vad_mode: int = 3,
+        max_energy: typing.Optional[float] = None,
+        max_current_energy_ratio_threshold: typing.Optional[float] = None,
+        current_energy_threshold: typing.Optional[float] = None,
+        silence_method: SilenceMethod = SilenceMethod.VAD_ONLY,
     ):
         super().__init__(
             "rhasspyasr_deepspeech_hermes",
@@ -125,6 +134,10 @@ class AsrHermesMqtt(HermesClient):
                 speech_seconds=speech_seconds,
                 silence_seconds=silence_seconds,
                 before_seconds=before_seconds,
+                silence_method=silence_method,
+                current_energy_threshold=current_energy_threshold,
+                max_energy=max_energy,
+                max_current_ratio_threshold=max_current_energy_ratio_threshold,
             )
 
         self.make_recorder = make_recorder or default_recorder
