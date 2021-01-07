@@ -6,9 +6,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import networkx as nx
-import rhasspyasr_deepspeech
 from rhasspyasr import Transcriber
 
+import rhasspyasr_deepspeech
 from rhasspyhermes.asr import (
     AsrAudioCaptured,
     AsrError,
@@ -63,7 +63,7 @@ class AsrHermesMqtt(HermesClient):
         transcriber_factory: typing.Callable[[], Transcriber],
         language_model_path: typing.Optional[Path] = None,
         alphabet_path: typing.Optional[Path] = None,
-        trie_path: typing.Optional[Path] = None,
+        scorer_path: typing.Optional[Path] = None,
         no_overwrite_train: bool = False,
         base_language_model_fst: typing.Optional[Path] = None,
         base_language_model_weight: float = 0,
@@ -112,12 +112,12 @@ class AsrHermesMqtt(HermesClient):
         self.base_language_model_weight = base_language_model_weight
         self.mixed_language_model_fst = mixed_language_model_fst
 
-        # If True, language model/trie won't be overwritten during training
+        # If True, language model/scorer won't be overwritten during training
         self.no_overwrite_train = no_overwrite_train
 
         # Files to write during training
         self.language_model_path = language_model_path
-        self.trie_path = trie_path
+        self.scorer_path = scorer_path
         self.alphabet_path = alphabet_path
 
         # True if ASR system is enabled
@@ -406,26 +406,26 @@ class AsrHermesMqtt(HermesClient):
             if (
                 not self.no_overwrite_train
                 and self.language_model_path
-                and self.trie_path
+                and self.scorer_path
                 and self.alphabet_path
             ):
                 _LOGGER.debug("Loading %s", train.graph_path)
                 with gzip.GzipFile(train.graph_path, mode="rb") as graph_gzip:
                     graph = nx.readwrite.gpickle.read_gpickle(graph_gzip)
 
-                # Generate language model/trie
+                # Generate language model/scorer
                 _LOGGER.debug("Starting training")
                 rhasspyasr_deepspeech.train(
-                    graph,
-                    self.language_model_path,
-                    self.trie_path,
-                    self.alphabet_path,
+                    graph=graph,
+                    language_model=self.language_model_path,
+                    scorer_path=self.scorer_path,
+                    alphabet_path=self.alphabet_path,
                     base_language_model_fst=self.base_language_model_fst,
                     base_language_model_weight=self.base_language_model_weight,
                     mixed_language_model_fst=self.mixed_language_model_fst,
                 )
             else:
-                _LOGGER.warning("Not overwriting language model/trie")
+                _LOGGER.warning("Not overwriting language model/scorer")
 
             # Model will reload
             self.transcriber = None

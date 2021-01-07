@@ -6,9 +6,9 @@ import typing
 from pathlib import Path
 
 import paho.mqtt.client as mqtt
-from rhasspyasr_deepspeech import DeepSpeechTranscriber
 
 import rhasspyhermes.cli as hermes_cli
+from rhasspyasr_deepspeech import DeepSpeechTranscriber
 from rhasspysilence import SilenceMethod
 
 from . import AsrHermesMqtt
@@ -44,22 +44,28 @@ def get_args() -> argparse.Namespace:
         "--language-model", help="Path to read/write ARPA language model file"
     )
     parser.add_argument(
-        "--trie",
-        help="Path to the language model trie file created with native_client/generate_trie",
+        "--scorer",
+        help="Path to the scorer package file created with native_client/generate_scorer_package",
     )
     parser.add_argument(
         "--beam-width", type=int, default=500, help="Beam width for the CTC decoder"
     )
     parser.add_argument(
-        "--lm-alpha", type=float, default=0.75, help="Language model weight (lm_alpha)"
+        "--lm-alpha",
+        type=float,
+        default=0.931289039105002,
+        help="Language model weight (lm_alpha)",
     )
     parser.add_argument(
-        "--lm-beta", type=float, default=1.85, help="Word insertion bonus (lm_beta)"
+        "--lm-beta",
+        type=float,
+        default=1.1834137581510284,
+        help="Word insertion bonus (lm_beta)",
     )
     parser.add_argument(
         "--no-overwrite-train",
         action="store_true",
-        help="Don't overwrite language model/trie during training",
+        help="Don't overwrite language model/scorer during training",
     )
 
     # Mixed language modeling
@@ -154,8 +160,8 @@ def run_mqtt(args: argparse.Namespace):
     if args.language_model:
         args.language_model = Path(args.language_model)
 
-    if args.trie:
-        args.trie = Path(args.trie)
+    if args.scorer:
+        args.scorer = Path(args.scorer)
 
     if args.alphabet:
         args.alphabet = Path(args.alphabet)
@@ -169,8 +175,7 @@ def run_mqtt(args: argparse.Namespace):
     def make_transcriber():
         return DeepSpeechTranscriber(
             args.model,
-            args.language_model,
-            args.trie,
+            args.scorer,
             beam_width=args.beam_width,
             lm_alpha=args.lm_alpha,
             lm_beta=args.lm_beta,
@@ -182,7 +187,7 @@ def run_mqtt(args: argparse.Namespace):
         client,
         transcriber_factory=make_transcriber,
         language_model_path=args.language_model,
-        trie_path=args.trie,
+        scorer_path=args.scorer,
         alphabet_path=args.alphabet,
         base_language_model_fst=args.base_language_model_fst,
         base_language_model_weight=args.base_language_model_weight,

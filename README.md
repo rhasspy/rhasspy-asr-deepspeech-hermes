@@ -1,13 +1,13 @@
 # Rhasspy ASR DeepSpeech Hermes
 
-MQTT service for Rhasspy that uses Mozilla's DeepSpeech 0.6.
+MQTT service for Rhasspy that uses Mozilla's DeepSpeech 0.9.3.
 
 ## Requirements
 
 * Python 3.7
-* [Mozilla DeepSpeech 0.6.1](https://github.com/mozilla/DeepSpeech/releases/tag/v0.6.1)
+* [Mozilla DeepSpeech 0.9.3](https://github.com/mozilla/DeepSpeech/releases/tag/v0.9.3)
 * [Pre-trained model](https://github.com/mozilla/DeepSpeech/blob/master/doc/USING.rst#getting-the-pre-trained-model)
-* `generate_trie` in `PATH` from [native client](https://github.com/mozilla/DeepSpeech/releases/download/v0.6.1/native_client.amd64.cpu.linux.tar.xz)
+* `generate_scorer_package` in `PATH` from [native client](https://github.com/mozilla/DeepSpeech/releases/download/v0.9.3/native_client.amd64.cpu.linux.tar.xz)
 * `build_binary` in `PATH` from [KenLM](https://github.com/kpu/kenlm)
 
 ## Installing
