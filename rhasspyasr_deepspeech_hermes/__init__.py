@@ -93,6 +93,7 @@ class AsrHermesMqtt(HermesClient):
         silence_method: SilenceMethod = SilenceMethod.VAD_ONLY,
         session_result_timeout: float = 20,
         reuse_transcribers: bool = True,
+        lang: typing.Optional[str] = None,
     ):
         super().__init__(
             "rhasspyasr_deepspeech_hermes",
@@ -156,6 +157,8 @@ class AsrHermesMqtt(HermesClient):
         self.recorder_factory = recorder_factory or default_recorder
 
         self.first_audio: bool = True
+
+        self.lang = lang
 
         # WAV buffers for each session
         self.sessions: typing.Dict[typing.Optional[str], TranscriberInfo] = {}
@@ -445,7 +448,7 @@ class AsrHermesMqtt(HermesClient):
                         seconds=transcription.transcribe_seconds,
                         site_id=site_id,
                         session_id=session_id,
-                        lang=info.start_listening.lang,
+                        lang=(info.start_listening.lang or self.lang),
                     )
                 )
             else:
@@ -456,7 +459,7 @@ class AsrHermesMqtt(HermesClient):
                     seconds=0,
                     site_id=site_id,
                     session_id=session_id,
-                    lang=info.start_listening.lang,
+                    lang=(info.start_listening.lang or self.lang),
                 )
 
             if info.start_listening.send_audio_captured:
