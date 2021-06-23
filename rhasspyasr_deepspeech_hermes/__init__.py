@@ -8,9 +8,8 @@ from pathlib import Path
 from queue import Queue
 
 import networkx as nx
-from rhasspyasr import Transcriber, Transcription
-
 import rhasspyasr_deepspeech
+from rhasspyasr import Transcriber, Transcription
 from rhasspyhermes.asr import (
     AsrAudioCaptured,
     AsrError,
